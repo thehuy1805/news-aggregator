@@ -1,0 +1,65 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: '1.24.2'
+
+      - name: Build and test API Service
+        working-directory: ./api-service
+        run: |
+          go mod tidy
+          go test ./...
+          go build -o api-service ./cmd/main.go
+
+      - name: Build and test Scraper Service
+        working-directory: ./scraper-service
+        run: |
+          go mod tidy
+          go test ./...
+          go build -o scraper-service ./cmd/main.go
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push API Service Docker image
+        working-directory: ./api-service
+        run: |
+          docker build -t yourusername/news-aggregator-api:latest .
+          docker push yourusername/news-aggregator-api:latest
+
+      - name: Build and push Scraper Service Docker image
+        working-directory: ./scraper-service
+        run: |
+          docker build -t yourusername/news-aggregator-scraper:latest .
+          docker push yourusername/news-aggregator-scraper:latest
+
+      - name: Deploy to Render
+        env:
+          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer $RENDER_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"serviceId":"your-api-service-id","image":"yourusername/news-aggregator-api:latest"}' \
+            https://api.render.com/v1/services/your-api-service-id/deploys
+          curl -X POST \
+            -H "Authorization: Bearer $RENDER_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"serviceId":"your-scraper-service-id","image":"yourusername/news-aggregator-scraper:latest"}' \
+            https://api.render.com/v1/services/your-scraper-service-id/deploys

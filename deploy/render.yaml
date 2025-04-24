@@ -1,0 +1,65 @@
+services:
+  - type: web
+    name: news-aggregator-api
+    env: docker
+    repo: https://github.com/yourusername/news-aggregator
+    dockerCommand: ./api-service
+    plan: free
+    envVars:
+      - key: POSTGRES_URL
+        value: postgres://user:password@postgres:5432/news?sslmode=disable
+      - key: KAFKA_BROKERS
+        value: kafka:9092
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+    healthCheckPath: /metrics
+
+  - type: worker
+    name: news-aggregator-scraper
+    env: docker
+    repo: https://github.com/yourusername/news-aggregator
+    dockerCommand: ./scraper-service
+    plan: free
+    envVars:
+      - key: KAFKA_BROKERS
+        value: kafka:9092
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+
+  - type: pserv
+    name: postgres
+    env: docker
+    image: postgres:13
+    envVars:
+      - key: POSTGRES_USER
+        value: user
+      - key: POSTGRES_PASSWORD
+        value: password
+      - key: POSTGRES_DB
+        value: news
+
+  - type: pserv
+    name: kafka
+    env: docker
+    image: confluentinc/cp-kafka:7.0.1
+    envVars:
+      - key: KAFKA_BROKER_ID
+        value: 1
+      - key: KAFKA_ZOOKEEPER_CONNECT
+        value: zookeeper:2181
+      - key: KAFKA_ADVERTISED_LISTENERS
+        value: PLAINTEXT://kafka:9092
+      - key: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+        value: 1
+
+  - type: pserv
+    name: zookeeper
+    env: docker
+    image: confluentinc/cp-zookeeper:7.0.1
+    envVars:
+      - key: ZOOKEEPER_CLIENT_PORT
+        value: 2181
+      - key: ZOOKEEPER_TICK_TIME
+        value: 2000
