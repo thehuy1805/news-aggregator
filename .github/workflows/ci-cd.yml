@@ -56,10 +56,10 @@ jobs:
           curl -X POST \
             -H "Authorization: Bearer $RENDER_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"serviceId":"prj-d05l91ili9vc738ttsbg","image":"yourusername/news-aggregator-api:latest"}' \
-            https://api.render.com/v1/services/prj-d05l91ili9vc738ttsbg/deploys
+            -d '{"serviceId":"your-api-service-id","image":"yourusername/news-aggregator-api:latest"}' \
+            https://api.render.com/v1/services/your-api-service-id/deploys
           curl -X POST \
             -H "Authorization: Bearer $RENDER_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"serviceId":"prj-d05l91ili9vc738ttsbg","image":"yourusername/news-aggregator-scraper:latest"}' \
-            https://api.render.com/v1/services/prj-d05l91ili9vc738ttsbg/deploys
+            -d '{"serviceId":"your-scraper-service-id","image":"yourusername/news-aggregator-scraper:latest"}' \
+            https://api.render.com/v1/services/your-scraper-service-id/deploys
