@@ -19,7 +19,8 @@ func main() {
 	// Danh sách nguồn RSS
 	feeds := []string{
 		"https://vnexpress.net/rss/tin-moi-nhat.rss",
-		"https://www.bbc.com/news/rss.xml",
+		"https://thanhnien.vn/rss/home.rss",
+		"https://tuoitre.vn/rss/tin-moi-nhat.rss",
 	}
 
 	// Khởi tạo Kafka producer
@@ -32,29 +33,38 @@ func main() {
 	// Tạo context
 	ctx := context.Background()
 
+	// Hàm thu thập tin tức
+	scrapeNews := func() {
+		var wg sync.WaitGroup
+		for _, feedURL := range feeds {
+			wg.Add(1)
+			go func(url string) {
+				defer wg.Done()
+				items, err := scraper.ScrapeFeed(url)
+				if err != nil {
+					logger.Error("Failed to scrape feed", zap.String("url", url), zap.Error(err))
+					return
+				}
+				logger.Info("Scraped articles", zap.String("url", url), zap.Int("count", len(items)))
+				for _, item := range items {
+					if err := kafka.SendArticle(ctx, producer, "articles", item); err != nil {
+						logger.Error("Failed to send article to Kafka", zap.Error(err))
+					}
+				}
+			}(feedURL)
+		}
+		wg.Wait()
+	}
+
+	// Chạy lần đầu ngay lập tức
+	scrapeNews()
+
 	// Thu thập tin tức định kỳ
 	ticker := time.NewTicker(10 * time.Minute)
 	for {
 		select {
 		case <-ticker.C:
-			var wg sync.WaitGroup
-			for _, feedURL := range feeds {
-				wg.Add(1)
-				go func(url string) {
-					defer wg.Done()
-					items, err := scraper.ScrapeFeed(url)
-					if err != nil {
-						logger.Error("Failed to scrape feed", zap.String("url", url), zap.Error(err))
-						return
-					}
-					for _, item := range items {
-						if err := kafka.SendArticle(ctx, producer, "articles", item); err != nil {
-							logger.Error("Failed to send article to Kafka", zap.Error(err))
-						}
-					}
-				}(feedURL)
-			}
-			wg.Wait()
+			scrapeNews()
 		}
 	}
 }

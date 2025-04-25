@@ -47,8 +47,8 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Giả lập kiểm tra thông tin đăng nhập
-	if creds.Username != "admin" || creds.Password != "password" {
+	// Kiểm tra thông tin đăng nhập
+	if creds.Username != "admin" || creds.Password != "admin" {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}

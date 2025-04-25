@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"log"
 
 	"api-service/internal/models"
 
 	"github.com/IBM/sarama"
 	_ "github.com/lib/pq"
+	"go.uber.org/zap"
 )
 
 func Connect(connStr string) (*sql.DB, error) {
@@ -34,25 +34,30 @@ func Connect(connStr string) (*sql.DB, error) {
 }
 
 func ConsumeArticles(ctx context.Context, db *sql.DB, brokers []string) {
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+
 	config := sarama.NewConfig()
 	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("Failed to create consumer", zap.Error(err))
 	}
 	defer consumer.Close()
 
 	partitionConsumer, err := consumer.ConsumePartition("articles", 0, sarama.OffsetNewest)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("Failed to create partition consumer", zap.Error(err))
 	}
 	defer partitionConsumer.Close()
+
+	logger.Info("Started consuming articles")
 
 	for {
 		select {
 		case msg := <-partitionConsumer.Messages():
 			var article models.Article
 			if err := json.Unmarshal(msg.Value, &article); err != nil {
-				log.Println("Failed to unmarshal article:", err)
+				logger.Error("Failed to unmarshal article", zap.Error(err))
 				continue
 			}
 			_, err := db.Exec(
@@ -60,7 +65,11 @@ func ConsumeArticles(ctx context.Context, db *sql.DB, brokers []string) {
 				article.Title, article.Description, article.Link, article.Published,
 			)
 			if err != nil {
-				log.Println("Failed to insert article:", err)
+				logger.Error("Failed to insert article", zap.Error(err))
+			} else {
+				logger.Info("Inserted article",
+					zap.String("title", article.Title),
+					zap.String("link", article.Link))
 			}
 		case <-ctx.Done():
 			return

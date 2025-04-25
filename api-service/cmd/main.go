@@ -19,7 +19,7 @@ func main() {
 	defer logger.Sync()
 
 	// Kết nối PostgreSQL
-	dbConn, err := db.Connect("postgres://user:password@postgres:5432/news?sslmode=disable")
+	dbConn, err := db.Connect("postgres://postgres:0937491454az@postgres:5432/news?sslmode=disable")
 	if err != nil {
 		logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
@@ -31,13 +31,15 @@ func main() {
 	// Khởi tạo router
 	r := mux.NewRouter()
 	r.Use(middleware.RateLimiter(100, 60)) // Giới hạn 100 yêu cầu/phút
-	r.Use(middleware.JWTAuth)
 
-	// Định nghĩa endpoint
-	r.HandleFunc("/articles", api.GetArticles(dbConn)).Methods("GET")
+	// Routes không cần authentication
 	r.HandleFunc("/login", api.Login).Methods("POST")
-
 	r.Handle("/metrics", promhttp.Handler())
+
+	// Subrouter cho các routes cần authentication
+	protected := r.PathPrefix("").Subrouter()
+	protected.Use(middleware.JWTAuth)
+	protected.HandleFunc("/articles", api.GetArticles(dbConn)).Methods("GET")
 
 	// Khởi động server
 	logger.Info("Starting API server on :8080")
