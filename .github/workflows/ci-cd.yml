@@ -1,65 +1,85 @@
-name: CI/CD Pipeline
+   name: CI/CD Pipeline
 
-on:
-  push:
-    branches:
-      - main
+   on:
+     push:
+       branches: [ main ]
+     pull_request:
+       branches: [ main ]
 
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+   jobs:
+     test:
+       runs-on: ubuntu-latest
+       steps:
+         - name: Checkout code
+           uses: actions/checkout@v3
 
-      - name: Set up Go
-        uses: actions/setup-go@v3
-        with:
-          go-version: '1.24.2'
+         - name: Set up Go
+           uses: actions/setup-go@v3
+           with:
+             go-version: '1.22'
 
-      - name: Build and test API Service
-        working-directory: ./api-service
-        run: |
-          go mod tidy
-          go test ./...
-          go build -o api-service ./cmd/main.go
+         - name: Test API Service
+           working-directory: ./api-service
+           run: |
+             go mod tidy
+             go test ./... -v
 
-      - name: Build and test Scraper Service
-        working-directory: ./scraper-service
-        run: |
-          go mod tidy
-          go test ./...
-          go build -o scraper-service ./cmd/main.go
+         - name: Test Scraper Service
+           working-directory: ./scraper-service
+           run: |
+             go mod tidy
+             go test ./... -v
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+     build-and-push:
+       needs: test
+       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+       runs-on: ubuntu-latest
+       steps:
+         - name: Checkout code
+           uses: actions/checkout@v3
 
-      - name: Build and push API Service Docker image
-        working-directory: ./api-service
-        run: |
-          docker build -t thehuy18052002/news-aggregator-api:latest .
-          docker push thehuy18052002/news-aggregator-api:latest
+         - name: Set up Docker Buildx
+           uses: docker/setup-buildx-action@v2
 
-      - name: Build and push Scraper Service Docker image
-        working-directory: ./scraper-service
-        run: |
-          docker build -t yourusername/news-aggregator-scraper:latest .
-          docker push yourusername/news-aggregator-scraper:latest
+         - name: Login to Docker Hub
+           uses: docker/login-action@v2
+           with:
+             username: ${{ secrets.DOCKER_USERNAME }}
+             password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Deploy to Render
-        env:
-          RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
-        run: |
-          curl -X POST \
-            -H "Authorization: Bearer $RENDER_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"serviceId":"your-api-service-id","image":"yourusername/news-aggregator-api:latest"}' \
-            https://api.render.com/v1/services/your-api-service-id/deploys
-          curl -X POST \
-            -H "Authorization: Bearer $RENDER_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d '{"serviceId":"your-scraper-service-id","image":"yourusername/news-aggregator-scraper:latest"}' \
-            https://api.render.com/v1/services/your-scraper-service-id/deploys
+         - name: Build and push API Service
+           uses: docker/build-push-action@v4
+           with:
+             context: ./api-service
+             push: true
+             tags: ${{ secrets.DOCKER_USERNAME }}/news-aggregator-api:latest
+
+         - name: Build and push Scraper Service
+           uses: docker/build-push-action@v4
+           with:
+             context: ./scraper-service
+             push: true
+             tags: ${{ secrets.DOCKER_USERNAME }}/news-aggregator-scraper:latest
+
+     deploy:
+       needs: build-and-push
+       if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+       runs-on: ubuntu-latest
+       steps:
+         - name: Deploy to Render
+           env:
+             RENDER_API_TOKEN: ${{ secrets.RENDER_API_TOKEN }}
+           run: |
+             # Triển khai API Service
+             curl -X POST \
+               -H "Authorization: Bearer $RENDER_API_TOKEN" \
+               -H "Content-Type: application/json" \
+               -d '{"serviceId":"srv-srv-d05oc5hr0fns73fl3ljg"}' \
+               https://api.render.com/v1/services/srv-d05oc5hr0fns73fl3ljg/deploys
+             
+             # Triển khai Scraper Service
+             curl -X POST \
+               -H "Authorization: Bearer $RENDER_API_TOKEN" \
+               -H "Content-Type: application/json" \
+               -d '{"serviceId":"srv-d05ocqbuibrs73ftftk0"}' \
+               https://api.render.com/v1/services/srv-d05ocqbuibrs73ftftk0/deploys
