@@ -40,8 +40,8 @@ jobs:
       - name: Build and push API Service Docker image
         working-directory: ./api-service
         run: |
-          docker build -t yourusername/news-aggregator-api:latest .
-          docker push yourusername/news-aggregator-api:latest
+          docker build -t thehuy18052002/news-aggregator-api:latest .
+          docker push thehuy18052002/news-aggregator-api:latest
 
       - name: Build and push Scraper Service Docker image
         working-directory: ./scraper-service
@@ -56,10 +56,10 @@ jobs:
           curl -X POST \
             -H "Authorization: Bearer $RENDER_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"serviceId":"your-api-service-id","image":"yourusername/news-aggregator-api:latest"}' \
-            https://api.render.com/v1/services/your-api-service-id/deploys
+            -d '{"serviceId":"prj-d05l91ili9vc738ttsbg","image":"yourusername/news-aggregator-api:latest"}' \
+            https://api.render.com/v1/services/prj-d05l91ili9vc738ttsbg/deploys
           curl -X POST \
             -H "Authorization: Bearer $RENDER_API_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{"serviceId":"your-scraper-service-id","image":"yourusername/news-aggregator-scraper:latest"}' \
-            https://api.render.com/v1/services/your-scraper-service-id/deploys
+            -d '{"serviceId":"prj-d05l91ili9vc738ttsbg","image":"yourusername/news-aggregator-scraper:latest"}' \
+            https://api.render.com/v1/services/prj-d05l91ili9vc738ttsbg/deploys
