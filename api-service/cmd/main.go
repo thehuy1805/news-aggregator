@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"net/http"
+	"os"
 
 	"api-service/internal/api"
 	"api-service/internal/db"
@@ -19,7 +20,12 @@ func main() {
 	defer logger.Sync()
 
 	// Kết nối PostgreSQL
-	dbConn, err := db.Connect("postgres://postgres:0937491454az@postgres:5432/news?sslmode=disable")
+	dbConnStr := os.Getenv("POSTGRES_URL")
+	if dbConnStr == "" {
+		// Fallback giá trị mặc định cho môi trường local (Docker Compose)
+		dbConnStr = "postgres://postgres:0937491454az@postgres:5432/news?sslmode=disable"
+	}
+	dbConn, err := db.Connect(dbConnStr)
 	if err != nil {
 		logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
