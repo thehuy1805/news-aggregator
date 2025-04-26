@@ -32,7 +32,11 @@ func main() {
 	defer dbConn.Close()
 
 	// Khởi tạo Kafka consumer
-	go db.ConsumeArticles(context.Background(), dbConn, []string{"kafka:9092"})
+	kafkaBrokers := os.Getenv("KAFKA_BROKERS")
+	if kafkaBrokers == "" {
+		kafkaBrokers = "kafka:9092"
+	}
+	go db.ConsumeArticles(context.Background(), dbConn, []string{kafkaBrokers})
 
 	// Khởi tạo router
 	r := mux.NewRouter()
