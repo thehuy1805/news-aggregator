@@ -2,12 +2,14 @@ package main
 
 import (
 	"context"
+	"os"
 	"sync"
 	"time"
 
 	"scraper-service/internal/kafka"
 	"scraper-service/internal/scraper"
 
+	"github.com/IBM/sarama"
 	"go.uber.org/zap"
 )
 
@@ -23,12 +25,21 @@ func main() {
 		"https://tuoitre.vn/rss/tin-moi-nhat.rss",
 	}
 
-	// Khởi tạo Kafka producer
-	producer, err := kafka.NewProducer([]string{"kafka:9092"})
-	if err != nil {
-		logger.Fatal("Failed to initialize Kafka producer", zap.Error(err))
+	// Kiểm soát việc sử dụng Kafka producer qua biến môi trường
+	useKafka := false
+	if v := os.Getenv("ENABLE_KAFKA_PRODUCER"); v == "true" {
+		useKafka = true
 	}
-	defer producer.Close()
+
+	var producer sarama.SyncProducer
+	var err error
+	if useKafka {
+		producer, err = kafka.NewProducer([]string{"kafka:9092"})
+		if err != nil {
+			logger.Fatal("Failed to initialize Kafka producer", zap.Error(err))
+		}
+		defer producer.Close()
+	}
 
 	// Tạo context
 	ctx := context.Background()
@@ -46,9 +57,11 @@ func main() {
 					return
 				}
 				logger.Info("Scraped articles", zap.String("url", url), zap.Int("count", len(items)))
-				for _, item := range items {
-					if err := kafka.SendArticle(ctx, producer, "articles", item); err != nil {
-						logger.Error("Failed to send article to Kafka", zap.Error(err))
+				if useKafka {
+					for _, item := range items {
+						if err := kafka.SendArticle(ctx, producer, "articles", item); err != nil {
+							logger.Error("Failed to send article to Kafka", zap.Error(err))
+						}
 					}
 				}
 			}(feedURL)
