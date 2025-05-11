@@ -3,37 +3,63 @@ services:
     name: news-aggregator-api
     env: docker
     repo: https://github.com/thehuy1805/news-aggregator
-    region: singapore
-    dockerfilePath: ./api-service/Dockerfile
+    dockerCommand: ./api-service
     plan: free
     envVars:
       - key: POSTGRES_URL
-        fromDatabase:
-          name: news-db
-          property: connectionString
+        value: postgres://postgres:0937491454az@postgres:5432/news?sslmode=disable
       - key: KAFKA_BROKERS
-        value: ${KAFKA_URL}
+        value: kafka:9092
     scaling:
       minInstances: 1
-      maxInstances: 1
-    healthCheckPath: /health
+      maxInstances: 3
+    healthCheckPath: /metrics
 
   - type: worker
     name: news-aggregator-scraper
     env: docker
     repo: https://github.com/thehuy1805/news-aggregator
-    region: singapore
-    dockerfilePath: ./scraper-service/Dockerfile
+    dockerCommand: ./scraper-service
     plan: free
     envVars:
       - key: KAFKA_BROKERS
-        value: ${KAFKA_URL}
+        value: kafka:9092
     scaling:
       minInstances: 1
-      maxInstances: 1
+      maxInstances: 3
 
-databases:
-  - name: news-db
-    plan: free
-    region: singapore
-    ipAllowList: []
+  - type: pserv
+    name: postgres
+    env: docker
+    image: postgres:17
+    envVars:
+      - key: POSTGRES_USER
+        value: user
+      - key: POSTGRES_PASSWORD
+        value: password
+      - key: POSTGRES_DB
+        value: news
+
+  - type: pserv
+    name: kafka
+    env: docker
+    image: confluentinc/cp-kafka:7.0.1
+    envVars:
+      - key: KAFKA_BROKER_ID
+        value: 1
+      - key: KAFKA_ZOOKEEPER_CONNECT
+        value: zookeeper:2181
+      - key: KAFKA_ADVERTISED_LISTENERS
+        value: PLAINTEXT://kafka:9092
+      - key: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
+        value: 1
+
+  - type: pserv
+    name: zookeeper
+    env: docker
+    image: confluentinc/cp-zookeeper:7.0.1
+    envVars:
+      - key: ZOOKEEPER_CLIENT_PORT
+        value: 2181
+      - key: ZOOKEEPER_TICK_TIME
+        value: 2000
