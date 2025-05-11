@@ -20,11 +20,12 @@ func main() {
 	defer logger.Sync()
 
 	// Kết nối PostgreSQL
-	connStr := os.Getenv("DATABASE_URL")
-	if connStr == "" {
-		logger.Fatal("DATABASE_URL không được thiết lập")
+	dbConnStr := os.Getenv("POSTGRES_URL")
+	if dbConnStr == "" {
+		// Fallback giá trị mặc định cho môi trường local (Docker Compose)
+		dbConnStr = "postgres://postgres:0937491454az@postgres:5432/news?sslmode=disable"
 	}
-	dbConn, err := db.Connect(connStr)
+	dbConn, err := db.Connect(dbConnStr)
 	if err != nil {
 		logger.Fatal("Failed to connect to database", zap.Error(err))
 	}
