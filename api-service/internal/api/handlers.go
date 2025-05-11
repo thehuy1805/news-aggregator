@@ -15,7 +15,7 @@ var jwtKey = []byte("your-secret-key")
 
 func GetArticles(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		rows, err := db.Query("SELECT title, description, link, published FROM articles ORDER BY id DESC LIMIT 50")
+		rows, err := db.Query("SELECT id, title, description, link, published FROM articles ORDER BY id DESC LIMIT 50")
 		if err != nil {
 			http.Error(w, "Failed to fetch articles", http.StatusInternalServerError)
 			return
@@ -25,7 +25,7 @@ func GetArticles(db *sql.DB) http.HandlerFunc {
 		var articles []models.Article
 		for rows.Next() {
 			var a models.Article
-			if err := rows.Scan(&a.Title, &a.Description, &a.Link, &a.Published); err != nil {
+			if err := rows.Scan(&a.ID, &a.Title, &a.Description, &a.Link, &a.Published); err != nil {
 				http.Error(w, "Failed to scan article", http.StatusInternalServerError)
 				return
 			}
