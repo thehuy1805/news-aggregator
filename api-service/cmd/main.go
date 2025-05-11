@@ -22,8 +22,18 @@ func main() {
 	// Kết nối PostgreSQL
 	dbConnStr := os.Getenv("POSTGRES_URL")
 	if dbConnStr == "" {
-		// Fallback giá trị mặc định cho môi trường local (Docker Compose)
-		dbConnStr = "postgres://postgres:0937491454az@postgres:5432/news?sslmode=disable"
+		// Nếu không có POSTGRES_URL, build connection string từ các biến Render cung cấp
+		host := os.Getenv("DB_HOST")
+		port := os.Getenv("DB_PORT")
+		user := os.Getenv("DB_USER")
+		password := os.Getenv("DB_PASSWORD")
+		dbname := os.Getenv("DB_NAME")
+		if host != "" && port != "" && user != "" && password != "" && dbname != "" {
+			dbConnStr = "postgres://" + user + ":" + password + "@" + host + ":" + port + "/" + dbname + "?sslmode=require"
+		} else {
+			// Fallback giá trị mặc định cho môi trường local (Docker Compose)
+			dbConnStr = "postgres://postgres:0937491454az@postgres:5432/news?sslmode=disable"
+		}
 	}
 	dbConn, err := db.Connect(dbConnStr)
 	if err != nil {
