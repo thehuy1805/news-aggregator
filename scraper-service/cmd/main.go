@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"sync"
 	"time"
@@ -43,6 +44,15 @@ func main() {
 
 	// Tạo context
 	ctx := context.Background()
+
+	// Khởi động một HTTP server đơn giản để Render nhận diện service là alive
+	go func() {
+		http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+		})
+		_ = http.ListenAndServe(":8080", nil)
+	}()
 
 	// Hàm thu thập tin tức
 	scrapeNews := func() {
