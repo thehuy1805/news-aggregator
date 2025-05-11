@@ -41,12 +41,15 @@ func main() {
 	}
 	defer dbConn.Close()
 
-	// Khởi tạo Kafka consumer
-	kafkaBrokers := os.Getenv("KAFKA_BROKERS")
-	if kafkaBrokers == "" {
-		kafkaBrokers = "kafka:9092"
+	// Khởi tạo Kafka consumer nếu được bật qua biến môi trường
+	enableKafka := os.Getenv("ENABLE_KAFKA_CONSUMER")
+	if enableKafka == "true" {
+		kafkaBrokers := os.Getenv("KAFKA_BROKERS")
+		if kafkaBrokers == "" {
+			kafkaBrokers = "kafka:9092"
+		}
+		go db.ConsumeArticles(context.Background(), dbConn, []string{kafkaBrokers})
 	}
-	go db.ConsumeArticles(context.Background(), dbConn, []string{kafkaBrokers})
 
 	// Khởi tạo router
 	r := mux.NewRouter()
