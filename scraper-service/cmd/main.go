@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"net/http"
 	"os"
 	"sync"
@@ -9,6 +10,8 @@ import (
 
 	"scraper-service/internal/kafka"
 	"scraper-service/internal/scraper"
+
+	_ "github.com/lib/pq"
 
 	"github.com/IBM/sarama"
 	"go.uber.org/zap"
@@ -71,6 +74,31 @@ func main() {
 					for _, item := range items {
 						if err := kafka.SendArticle(ctx, producer, "articles", item); err != nil {
 							logger.Error("Failed to send article to Kafka", zap.Error(err))
+						}
+					}
+				} else {
+					// Lưu trực tiếp vào database nếu không dùng Kafka
+					dbHost := os.Getenv("DB_HOST")
+					dbPort := os.Getenv("DB_PORT")
+					dbUser := os.Getenv("DB_USER")
+					dbPassword := os.Getenv("DB_PASSWORD")
+					dbName := os.Getenv("DB_NAME")
+					if dbHost != "" && dbPort != "" && dbUser != "" && dbPassword != "" && dbName != "" {
+						connStr := "postgres://" + dbUser + ":" + dbPassword + "@" + dbHost + ":" + dbPort + "/" + dbName + "?sslmode=require"
+						db, err := sql.Open("postgres", connStr)
+						if err != nil {
+							logger.Error("Failed to connect to database", zap.Error(err))
+							return
+						}
+						defer db.Close()
+						for _, item := range items {
+							_, err := db.Exec(
+								"INSERT INTO articles (title, description, link, published) VALUES ($1, $2, $3, $4)",
+								item.Title, item.Description, item.Link, item.Published,
+							)
+							if err != nil {
+								logger.Error("Failed to insert article", zap.Error(err))
+							}
 						}
 					}
 				}
