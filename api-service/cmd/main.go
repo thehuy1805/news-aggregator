@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"time"
 
 	"api-service/internal/api"
 	"api-service/internal/db"
@@ -53,7 +54,7 @@ func main() {
 
 	// Khởi tạo router
 	r := mux.NewRouter()
-	r.Use(middleware.RateLimiter(100, 60)) // Giới hạn 100 yêu cầu/phút
+	r.Use(middleware.RateLimiter(100, time.Minute)) // Giới hạn 100 yêu cầu/phút
 
 	// Routes không cần authentication
 	r.HandleFunc("/login", api.Login).Methods("POST")
